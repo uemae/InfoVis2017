@@ -14,7 +14,7 @@ function main()
     scene.add( camera );
 
     //点光源の追加
-    var light = new THREE.PointLight( 0xffffff );
+    var light = new THREE.PointLight( 0x33ffff );
     light.position.set( 1,1,1 );
     scene.add( light );
 
