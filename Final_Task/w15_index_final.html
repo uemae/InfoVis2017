@@ -1,0 +1,176 @@
+<html lang="ja">
+<head>
+  <link type="text/css" rel="stylesheet" href="http://code.jquery.com/ui/1.10.3/themes/cupertino/jquery-ui.min.css" />
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+  <script type="text/javascript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.min.js"></script>
+  <script type="text/javascript">
+  $(function() {
+  // 2スライダーを適用
+  $('#slider').slider({
+    min: 0,
+    max: 255,
+    step: 1,
+    value: 128,
+    // 3スライダーの変化時にテキストボックスの値表示を更新
+    change: function(e, ui) {
+      $('#num').val(ui.value);
+    },
+    // 4スライダーの初期化時に、その値をテキストボックスにも反映
+    //create: function(e, ui) {
+      //$('#num').val($(this).slider('option', 'value'));
+    //}
+  });
+});
+	</script>
+</head>
+    <head>
+	<title>W15: Final_Task</title>
+    </head>
+    <body style="margin:0">
+	<script src="three.min.js"></script>
+	<script src="Lut.js"></script>
+	<script src="TrackballControls.js"></script>
+	<script src="KVS.min.js"></script>
+	<script src="KVS2THREE.min.js"></script>
+	<script src="KVSLobsterData.js"></script>
+	<script src="Bounds.js"></script>
+	<script src="Isosurfaces.js"></script>
+   <!--フォンーシェーディング-->
+  <script type="x-shader/x-vertex" id="phong.vert">
+  varying vec3 point_color;
+  varying vec4 point_position;
+  varying vec3 normal_vector;
+  uniform vec3 light_position;
+  uniform float ch1;
+   void main()
+   {   point_color = color;
+       point_position = modelViewMatrix * vec4( position, 1.0 );
+       normal_vector = normalMatrix * normal;
+       gl_Position = projectionMatrix * point_position;
+   }
+  </script>
+  <!--フォンシェーディング-->
+  <script type="x-shader/x-fragment" id="phong.frag">
+  varying vec3 point_color;
+  varying vec4 point_position;
+  varying vec3 normal_vector;
+  uniform vec3 light_position;
+  uniform float ch1;
+  //Lambert反射モデル
+  vec3 LambertianReflection( vec3 C, vec3 L, vec3 N )
+  {
+    float ka = 0.4;
+    float kd = 0.6;
+    float dd = max( dot( N, L ), 0.0 );
+    float Ia = ka;
+    float Id = kd * dd;
+    return C * ( Ia + Id );
+  }
+  //Phong反射モデル
+  vec3 PhongReflection( vec3 C, vec3 L, vec3 N, vec3 V )
+{
+  float ka = 0.3;
+  float kd = 0.5;
+  float ks = 0.8;
+  float n = 50.0;
+  vec3 R = reflect( -L, N );
+  float dd = max( dot( N, L ), 0.0 );
+  float ds = pow( max( dot( R, V ), 0.0 ), n );
+  if ( dd <= 0.0 ) { ds = 0.0; }
+  float Ia = ka;
+  float Id = kd * dd;
+  float Is = ks * ds;
+  return C * ( Ia + Id + Is );
+}
+//BlinnPhong反射モデル
+vec3 BlinnPhongReflection( vec3 C, vec3 L, vec3 N, vec3 V, vec3 H )
+{
+float ka = 0.3;
+float kd = 0.5;
+float ks = 0.8;
+float n = 50.0;
+vec3 R = reflect( -L, N );
+float dd = max( dot( N, L ), 0.0 );
+float ds = pow( max( dot( H, N ), 0.0 ), n );
+if ( dd <= 0.0 ) { ds = 0.0; }
+float Ia = ka;
+float Id = kd * dd;
+float Is = ks * ds;
+return C * ( Ia + Id + Is );
+}
+//cooktrance反射モデル
+float BechmannDistribution(float d, float m) {
+    float d2 = d * d;
+    float m2 = m * m;
+    return exp((d2 - 1.0) / (d2 * m2)) / (m2 * d2 * d2);
+}
+// フレネル項
+float Fresnel(float c, float f0) {
+  float sf = sqrt(f0);
+  float n = (1.0 + sf) / (1.0 - sf);
+  float g = sqrt(n * n + c * c - 1.0);
+  float ga = (c * (g + c) - 1.0) * (c * (g + c) - 1.0);
+  float gb = (c * (g - c) + 1.0) * (c * (g - c) + 1.0);
+  return (g - c) * (g - c) / (2.0 * (g + c) + (g + c)) * (1.0 + ga / gb);
+}
+vec3 CookTranceReflection( vec3 C, vec3 L, vec3 N, vec3 V, vec3 H ){
+  float hn = dot(H, N);
+  float ln = dot(L, N);
+  float lh = dot(L, H);
+  float vn = dot(V, N);
+  float ka = 0.3;
+  float kd = 0.5;
+  float ks = 0.8;
+  float n = 20.0;
+  float microfacet = 0.5;
+  float f = Fresnel(lh, ks);
+  float d = BechmannDistribution(hn, microfacet);
+  float t = 2.0 * hn / dot(V, H);
+  float g = min(1.0, min(t * vn, t * ln));
+  float m = 3.14159265 * vn * ln;
+  float spe = max(f * d * g / m, 0.0);
+  float dif = max(ln, 0.0) * kd;
+  float amb = ka;
+  return C * ( spe + dif + amb );
+}
+   void main()
+   {
+     vec3 shaded_color;
+     vec3 C = point_color;
+     vec3 L = normalize( light_position - point_position.xyz );
+     vec3 N = normalize( normal_vector );
+     vec3 V = normalize( cameraPosition - point_position.xyz );
+     vec3 H = normalize( L + V );
+     if ( ch1 == 1.0 ) { shaded_color = LambertianReflection( C,L,N ); }
+     if ( ch1 == 2.0 ) { shaded_color = PhongReflection( C,L,N,V ); }
+     if ( ch1 == 3.0 ) { shaded_color = BlinnPhongReflection( C,L,N,V,H ); }
+     if ( ch1 == 4.0 ) { shaded_color = CookTranceReflection( C,L,N,V,H ); }
+     gl_FragColor = vec4( shaded_color, 1.0 );
+   }
+  </script>
+  <div id="display" style="width: 80%; float: left;"></div>
+<div id="controller" style="width:30%; float:left;">
+<label id="label" style="font-family:Arial;"></label>
+<label>Reflection Model:</label>
+  <select id="select" name="btn">
+    <option value="1.0">Lambert</option>
+    <option value="2.0">Phong</option>
+    <option value="3.0">Blinn Phong</option>
+    <option value="4.0">Cook Trance</option>
+  </select>
+  <br>
+<label>Isovalue:</label>
+<input id="range" name="range" type="range" min="0" max="255">
+<br>
+<label>Color:</label>
+<input id="color" name="color" type="range" min="0" max="255">
+<br>
+<input id="btn" type="button" value="Submit">
+<div id="result"></div>
+</div>
+	<script src="w15_main_final.js"></script>
+	<script>
+	 main();
+	</script>
+    </body>
+</html>
