@@ -91,7 +91,7 @@ function Isosurfaces( volume, isovalue, screen, ch, color_a )
     {
       var C0 = new THREE.Color().setHex( cmap[color_a][1] );
           var C1 = new THREE.Color().setHex( cmap[color_a][1] );
-          var C2 = new THREE.Color().setHex( cmap[color_a][1] );
+          var C2 = new THREE.Color().setHex( cmap[color_a ][1] );
           geometry.faces[i].vertexColors.push( C0 );
           geometry.faces[i].vertexColors.push( C1 );
           geometry.faces[i].vertexColors.push( C2 );

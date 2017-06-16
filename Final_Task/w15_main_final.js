@@ -3,6 +3,7 @@ function main()
     var volume = new KVS.LobsterData();
     var screen = new KVS.THREEScreen();
     var ch = 1.0;
+    var save_mesh;
 
     screen.init( volume, {
         width: window.innerWidth,
@@ -30,6 +31,15 @@ function main()
         screen.scene.remove(surfaces);
         surfaces = Isosurfaces( volume, isovalue, screen, ch, color_a );
         screen.scene.add(surfaces);
+      },false);
+
+      document.getElementById('btn2').addEventListener('click',function(){
+        save_mesh = surfaces;
+      },false);
+
+      document.getElementById('btn3').addEventListener('click',function(){
+        screen.scene.remove(surfaces);
+        screen.scene.add(save_mesh);
       },false);
 
     document.addEventListener( 'mousemove', function() {
